@@ -340,11 +340,12 @@ with sekme1:
                         os.remove(EXCEL_DOSYASI)
                         st.rerun()
                 with c2:
+                    tr_bugun = datetime.now(ZoneInfo("Europe/Istanbul")).strftime("%Y%m%d")
                     with open(EXCEL_DOSYASI, "rb") as f:
                         st.download_button(
                             label="📥 Excel'i İndir",
                             data=f,
-                            file_name=f"yoklama_{datetime.now(ZoneInfo('Europe/Istanbul')).strftime('%Y%m%d')}.xlsx"
+                            file_name=f"yoklama_{tr_bugun}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
             except Exception:
