@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from PIL import Image, ImageOps
+from zoneinfo import ZoneInfo
 
 # Klasör ve Dosya Yolları
 KLASOR_ADI = "ogrenciler"
@@ -124,8 +125,10 @@ def cosine_distance(a, b):
     return 1 - (np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 def yoklama_kaydet(etiket):
-    zaman = datetime.now().strftime("%H:%M:%S")
-    tarih = datetime.now().strftime("%Y-%m-%d")
+    # Doğrudan Türkiye saat dilimini alıyoruz (UTC+3)
+    tr_saati = datetime.now(ZoneInfo("Europe/Istanbul"))
+    zaman = tr_saati.strftime("%H:%M:%S")
+    tarih = tr_saati.strftime("%Y-%m-%d")
     
     parcalar = etiket.split(" - ")
     if len(parcalar) == 2:
@@ -341,7 +344,7 @@ with sekme1:
                         st.download_button(
                             label="📥 Excel'i İndir",
                             data=f,
-                            file_name=f"yoklama_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                            file_name=f"yoklama_{datetime.now(ZoneInfo('Europe/Istanbul')).strftime('%Y%m%d')}.xlsx"
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
             except Exception:
