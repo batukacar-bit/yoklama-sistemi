@@ -24,7 +24,7 @@ MODEL_NAME = "Facenet512"
 st.set_page_config(page_title="Akıllı Yoklama Portalı", layout="wide", page_icon="🎓")
 st.title("🎓 Akıllı Öğrenci Yoklama & Kayıt Portalı")
 
-# ================= SEKME YARDIMCI FONKSİYONLARI =================
+# ================= YARDIMCI FONKSİYONLAR =================
 def temiz_isim_uret(metin):
     metin = metin.strip().replace("\n", " ")
     metin = re.sub(r'[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ\s]', '', metin).strip()
@@ -334,7 +334,7 @@ with sekme1:
 # --- 2. SEKME: HIZLI ÖĞRENCİ KAYIT ---
 with sekme2:
     st.subheader("👤 Yeni Öğrenci Kayıt Formu")
-    st.markdown("Öğrenci bilgilerini girip net bir yüz fotoğrafı yükleyin veya kameradan çekin.")
+    st.markdown("Öğrenci bilgilerini girip net bir yüz fotoğrafı çekin veya yükleyin.")
 
     c_form1, c_form2 = st.columns([1, 1])
 
@@ -360,7 +360,7 @@ with sekme2:
     with c_form2:
         if kayit_foto is not None:
             kayit_foto = ImageOps.exif_transpose(kayit_foto)
-            st.image(kayit_foto, caption="Yüklenecek Fotoğraf Önizlemesi", width=280)
+            st.image(kayit_foto, caption="Yüklenecek Fotoğraf Önizlemesi", width=250)
 
         if kaydet_butonu:
             if not ogr_ad or not ogr_soyad:
@@ -392,24 +392,34 @@ with sekme2:
                         kayit_foto.convert("RGB").save(kayit_yolu, "JPEG", quality=95)
 
                         st.cache_resource.clear()
-                        st.success(f"🎉 **{ogr_ad} {ogr_soyad}** başarıyla kaydedildi!")
-                        st.balloons()
+                        st.success(f"🎉 **{ogr_ad} {ogr_soyad}** başarıyla sisteme eklendi!")
                         st.rerun()
 
                     except Exception as e:
                         st.error(f"Kayıt sırasında hata oluştu: {e}")
 
+    # Fotoğraflar gösterilmez; yalnızca isim ve numara listesi gösterilir
     st.markdown("---")
     st.subheader("📚 Kayıtlı Öğrenci Listesi")
     mevcut_ogrenciler = [f for f in os.listdir(VERI_YOLU) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+
     if mevcut_ogrenciler:
-        st.info(f"Sistemde şu an toplam **{len(mevcut_ogrenciler)}** öğrenci kayıtlı.")
-        cols_liste = st.columns(6)
-        for i, dosya in enumerate(mevcut_ogrenciler):
-            dosya_koku = os.path.splitext(dosya)[0].replace('_', ' ')
-            with cols_liste[i % 6]:
-                img_path = os.path.join(VERI_YOLU, dosya)
-                st.image(img_path, caption=dosya_koku, use_container_width=True)
+        st.info(f"Sistemde şu an toplam **{len(mevcut_ogrenciler)}** öğrencinin yüz verisi kayıtlı.")
+        
+        tablo_verisi = []
+        for d in sorted(mevcut_ogrenciler):
+            dosya_koku = os.path.splitext(d)[0]
+            parcalar = dosya_koku.split('_')
+            if len(parcalar) >= 2 and parcalar[0].isdigit():
+                numara = parcalar[0]
+                ad_soyad = " ".join(parcalar[1:])
+            else:
+                numara = "-"
+                ad_soyad = dosya_koku.replace('_', ' ')
+            tablo_verisi.append({"Öğrenci Numarası": numara, "Ad Soyad": ad_soyad})
+
+        df_ogrenciler = pd.DataFrame(tablo_verisi)
+        st.dataframe(df_ogrenciler, use_container_width=True)
     else:
         st.write("Henüz sisteme kayıtlı öğrenci bulunmuyor.")
 
