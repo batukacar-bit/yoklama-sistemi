@@ -14,6 +14,8 @@ import pandas as pd
 from datetime import datetime
 from PIL import Image, ImageOps
 from zoneinfo import ZoneInfo
+import pillow_heif
+pillow_heif.register_heif_opener()
 
 # Klasör ve Dosya Yolları
 KLASOR_ADI = "ogrenciler"
@@ -226,7 +228,7 @@ with sekme1:
                 if kamera:
                     gorsel = Image.open(kamera)
             else:
-                dosya = st.file_uploader("Sınıf Fotoğrafı Yükle", type=['jpg', 'jpeg', 'png'], key="yoklama_foto")
+                dosya = st.file_uploader("Sınıf Fotoğrafı Yükle", type=['jpg', 'jpeg', 'png', 'heic', 'HEIC'], key="yoklama_foto")
                 if dosya:
                     gorsel = Image.open(dosya)
 
@@ -373,7 +375,7 @@ with sekme2:
             if cam_foto:
                 kayit_foto = Image.open(cam_foto)
         else:
-            yuklenen = st.file_uploader("Net bir vesikalık / selfie seçin", type=['jpg', 'jpeg', 'png'], key="ogr_dosya")
+            yuklenen = st.file_uploader("Net bir vesikalık / selfie seçin", type=['jpg', 'jpeg', 'png', 'heic', 'HEIC'], key="ogr_dosya")
             if yuklenen:
                 kayit_foto = Image.open(yuklenen)
 
