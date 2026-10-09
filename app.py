@@ -1,6 +1,12 @@
-import streamlit as st
 import os
+# TensorFlow ve donanım bellek optimizasyonları
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+import streamlit as st
 import re
+import gc
 import fitz  # PyMuPDF
 import cv2
 import numpy as np
@@ -149,7 +155,6 @@ def yoklama_kaydet(etiket):
 
 @st.cache_resource
 def ogrenci_veritabanini_yukle():
-    # DeepFace'i sadece ihtiyaç duyulduğunda fonksiyon içinde import ediyoruz (RAM tasarrufu)
     from deepface import DeepFace
     veritabani = []
     dosyalar = [f for f in os.listdir(VERI_YOLU) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
@@ -169,7 +174,7 @@ def ogrenci_veritabanini_yukle():
         try:
             img_pil = Image.open(tam_yol).convert("RGB")
             img_pil = ImageOps.exif_transpose(img_pil)
-            img_pil.thumbnail((400, 400))
+            img_pil.thumbnail((300, 300))  # Ön işleme için RAM dostu boyut
             img_np = np.array(img_pil)
 
             emb = DeepFace.represent(
@@ -223,20 +228,22 @@ with sekme1:
                     gorsel = Image.open(dosya)
 
             if gorsel is not None:
-                from deepface import DeepFace
+                # 1. Fotoğrafı RAM patlatmayacak boyuta küçült
                 gorsel = ImageOps.exif_transpose(gorsel)
-                gorsel.thumbnail((1000, 1000))
+                gorsel.thumbnail((800, 800))
 
                 frame_rgb = np.array(gorsel)
                 frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
                 with st.spinner("Yüzler taranıyor ve analiz ediliyor..."):
+                    from deepface import DeepFace
                     try:
+                        # align=False ile ekstra tensör belleğini önle
                         yuz_tespitleri = DeepFace.extract_faces(
                             img_path=frame_bgr,
                             detector_backend="opencv",
                             enforce_detection=False,
-                            align=True
+                            align=False
                         )
                     except Exception as e:
                         yuz_tespitleri = []
@@ -262,9 +269,12 @@ with sekme1:
                         if yuz_kare.size == 0:
                             continue
 
+                        # 2. Modele girmeden önce 160x160 piksele sabitle
+                        yuz_kare_kucuk = cv2.resize(yuz_kare, (160, 160))
+
                         try:
                             kare_emb = DeepFace.represent(
-                                img_path=yuz_kare,
+                                img_path=yuz_kare_kucuk,
                                 model_name=MODEL_NAME,
                                 detector_backend="skip",
                                 enforce_detection=False
@@ -308,6 +318,11 @@ with sekme1:
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 0), 2)
 
                     st.image(frame_rgb, caption="Yoklama Analiz Sonucu", use_container_width=True)
+
+                    # 3. Belleği temizle
+                    del frame_bgr
+                    del yuz_tespitleri
+                    gc.collect()
 
     with col_sag:
         st.subheader("📋 Güncel Yoklama Tablosu")
@@ -374,11 +389,14 @@ with sekme2:
                 with st.spinner("Yüz taranıyor ve kaydediliyor..."):
                     try:
                         from deepface import DeepFace
+                        # Kaydedilen fotoğrafı 400x400 boyutunda tut
+                        kayit_foto.thumbnail((400, 400))
                         foto_np = np.array(kayit_foto.convert("RGB"))
                         yuz_kontrol = DeepFace.extract_faces(
                             img_path=foto_np,
                             detector_backend="opencv",
-                            enforce_detection=False
+                            enforce_detection=False,
+                            align=False
                         )
                         guvenli_yuzler = [y for y in yuz_kontrol if y.get('confidence', 0) > 0.40]
 
@@ -396,6 +414,7 @@ with sekme2:
                         kayit_foto.convert("RGB").save(kayit_yolu, "JPEG", quality=90)
 
                         st.cache_resource.clear()
+                        gc.collect()
                         st.success(f"🎉 **{ogr_ad} {ogr_soyad}** başarıyla sisteme eklendi!")
                         st.rerun()
 
@@ -466,6 +485,7 @@ with sekme3:
                 with st.spinner("Kaydediliyor..."):
                     toplam = pdf_kes_ve_kaydet_sirali(pdf_bytes, cols, rows, m_left, m_right, m_top, m_bottom, satirlar_arasi, sutunlar_arasi, foto_oran, isimler_text)
                     st.cache_resource.clear()
+                    gc.collect()
                     st.success(f"🎉 {toplam} öğrenci kaydedildi!")
                     st.rerun()
 
