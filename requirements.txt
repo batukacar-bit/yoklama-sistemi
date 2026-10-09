@@ -1,6 +1,9 @@
 streamlit
 deepface
+tf-keras
 opencv-python-headless
 pandas
-numpy
+numpy<2.0.0
 pillow
+openpyxl
+PyMuPDF
