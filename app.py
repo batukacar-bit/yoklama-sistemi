@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from PIL import Image, ImageOps
-from deepface import DeepFace
 
 # Klasör ve Dosya Yolları
 KLASOR_ADI = "ogrenciler"
@@ -19,7 +18,7 @@ else:
 
 os.makedirs(VERI_YOLU, exist_ok=True)
 EXCEL_DOSYASI = os.path.join(os.path.dirname(VERI_YOLU), "yoklama.xlsx")
-MODEL_NAME = "Facenet512"
+MODEL_NAME = "Facenet"  # Belleği şişirmeyen hafif model
 
 st.set_page_config(page_title="Akıllı Yoklama Portalı", layout="wide", page_icon="🎓")
 st.title("🎓 Akıllı Öğrenci Yoklama & Kayıt Portalı")
@@ -150,6 +149,8 @@ def yoklama_kaydet(etiket):
 
 @st.cache_resource
 def ogrenci_veritabanini_yukle():
+    # DeepFace'i sadece ihtiyaç duyulduğunda fonksiyon içinde import ediyoruz (RAM tasarrufu)
+    from deepface import DeepFace
     veritabani = []
     dosyalar = [f for f in os.listdir(VERI_YOLU) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
     
@@ -168,6 +169,7 @@ def ogrenci_veritabanini_yukle():
         try:
             img_pil = Image.open(tam_yol).convert("RGB")
             img_pil = ImageOps.exif_transpose(img_pil)
+            img_pil.thumbnail((400, 400))
             img_np = np.array(img_pil)
 
             emb = DeepFace.represent(
@@ -177,8 +179,8 @@ def ogrenci_veritabanini_yukle():
                 enforce_detection=False
             )[0]["embedding"]
             veritabani.append({"isim": gorunen_etiket, "embedding": emb})
-        except Exception as e:
-            st.sidebar.warning(f"Okunamadı: {dosya} -> {e}")
+        except Exception:
+            pass
             
     return veritabani
 
@@ -200,7 +202,7 @@ with sekme1:
             st.rerun()
 
     ogrenci_db = ogrenci_veritabanini_yukle()
-    esik_degeri = st.slider("Hassasiyet Eşiği", 0.25, 0.60, 0.38, 0.01)
+    esik_degeri = st.slider("Hassasiyet Eşiği", 0.25, 0.65, 0.40, 0.01)
 
     col_sol, col_sag = st.columns([1.1, 0.9])
 
@@ -221,13 +223,14 @@ with sekme1:
                     gorsel = Image.open(dosya)
 
             if gorsel is not None:
+                from deepface import DeepFace
                 gorsel = ImageOps.exif_transpose(gorsel)
-                gorsel.thumbnail((1280, 1280))
+                gorsel.thumbnail((1000, 1000))
 
                 frame_rgb = np.array(gorsel)
                 frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
-                with st.spinner("Yüzler taranıyor ve eşleştiriliyor..."):
+                with st.spinner("Yüzler taranıyor ve analiz ediliyor..."):
                     try:
                         yuz_tespitleri = DeepFace.extract_faces(
                             img_path=frame_bgr,
@@ -370,6 +373,7 @@ with sekme2:
             else:
                 with st.spinner("Yüz taranıyor ve kaydediliyor..."):
                     try:
+                        from deepface import DeepFace
                         foto_np = np.array(kayit_foto.convert("RGB"))
                         yuz_kontrol = DeepFace.extract_faces(
                             img_path=foto_np,
@@ -389,7 +393,7 @@ with sekme2:
                             dosya_adi = f"{ad_soyad_temiz}.jpg"
 
                         kayit_yolu = os.path.join(VERI_YOLU, dosya_adi)
-                        kayit_foto.convert("RGB").save(kayit_yolu, "JPEG", quality=95)
+                        kayit_foto.convert("RGB").save(kayit_yolu, "JPEG", quality=90)
 
                         st.cache_resource.clear()
                         st.success(f"🎉 **{ogr_ad} {ogr_soyad}** başarıyla sisteme eklendi!")
@@ -398,7 +402,6 @@ with sekme2:
                     except Exception as e:
                         st.error(f"Kayıt sırasında hata oluştu: {e}")
 
-    # Fotoğraflar gösterilmez; yalnızca isim ve numara listesi gösterilir
     st.markdown("---")
     st.subheader("📚 Kayıtlı Öğrenci Listesi")
     mevcut_ogrenciler = [f for f in os.listdir(VERI_YOLU) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
