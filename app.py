@@ -127,7 +127,6 @@ def cosine_distance(a, b):
     return 1 - (np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 def yoklama_kaydet(etiket):
-    # Doğrudan Türkiye saat dilimini alıyoruz (UTC+3)
     tr_saati = datetime.now(ZoneInfo("Europe/Istanbul"))
     zaman = tr_saati.strftime("%H:%M:%S")
     tarih = tr_saati.strftime("%Y-%m-%d")
@@ -179,7 +178,7 @@ def ogrenci_veritabanini_yukle():
         try:
             img_pil = Image.open(tam_yol).convert("RGB")
             img_pil = ImageOps.exif_transpose(img_pil)
-            img_pil.thumbnail((300, 300))  # Ön işleme için RAM dostu boyut
+            img_pil.thumbnail((300, 300))
             img_np = np.array(img_pil)
 
             emb = DeepFace.represent(
@@ -224,16 +223,17 @@ with sekme1:
             gorsel = None
 
             if secim == "Kameradan Çek":
-                kamera = st.camera_input("Kameraya bakın ve fotoğraf çekin")
-                if kamera:
-                    gorsel = Image.open(kamera)
+                kamera_aktif = st.checkbox("📷 Kamerayı Aç / Başlat", value=False)
+                if kamera_aktif:
+                    kamera = st.camera_input("Kameraya bakın ve fotoğraf çekin")
+                    if kamera:
+                        gorsel = Image.open(kamera)
             else:
                 dosya = st.file_uploader("Sınıf Fotoğrafı Yükle", type=['jpg', 'jpeg', 'png', 'heic', 'HEIC'], key="yoklama_foto")
                 if dosya:
                     gorsel = Image.open(dosya)
 
             if gorsel is not None:
-                # 1. Fotoğrafı RAM patlatmayacak boyuta küçült
                 gorsel = ImageOps.exif_transpose(gorsel)
                 gorsel.thumbnail((800, 800))
 
@@ -243,7 +243,6 @@ with sekme1:
                 with st.spinner("Yüzler taranıyor ve analiz ediliyor..."):
                     from deepface import DeepFace
                     try:
-                        # align=False ile ekstra tensör belleğini önle
                         yuz_tespitleri = DeepFace.extract_faces(
                             img_path=frame_bgr,
                             detector_backend="opencv",
@@ -274,7 +273,6 @@ with sekme1:
                         if yuz_kare.size == 0:
                             continue
 
-                        # 2. Modele girmeden önce 160x160 piksele sabitle
                         yuz_kare_kucuk = cv2.resize(yuz_kare, (160, 160))
 
                         try:
@@ -324,7 +322,6 @@ with sekme1:
 
                     st.image(frame_rgb, caption="Yoklama Analiz Sonucu", use_container_width=True)
 
-                    # 3. Belleği temizle
                     del frame_bgr
                     del yuz_tespitleri
                     gc.collect()
@@ -371,9 +368,11 @@ with sekme2:
         kayit_foto = None
 
         if kayit_yontemi == "Kamera ile Çek":
-            cam_foto = st.camera_input("Kameraya düz bakın ve çekin", key="ogr_cam")
-            if cam_foto:
-                kayit_foto = Image.open(cam_foto)
+            kayit_kamera_aktif = st.checkbox("📷 Kamerayı Aç / Başlat", value=False, key="ogr_cam_aktif")
+            if kayit_kamera_aktif:
+                cam_foto = st.camera_input("Kameraya düz bakın ve çekin", key="ogr_cam")
+                if cam_foto:
+                    kayit_foto = Image.open(cam_foto)
         else:
             yuklenen = st.file_uploader("Net bir vesikalık / selfie seçin", type=['jpg', 'jpeg', 'png', 'heic', 'HEIC'], key="ogr_dosya")
             if yuklenen:
@@ -395,7 +394,6 @@ with sekme2:
                 with st.spinner("Yüz taranıyor ve kaydediliyor..."):
                     try:
                         from deepface import DeepFace
-                        # Kaydedilen fotoğrafı 400x400 boyutunda tut
                         kayit_foto.thumbnail((400, 400))
                         foto_np = np.array(kayit_foto.convert("RGB"))
                         yuz_kontrol = DeepFace.extract_faces(
@@ -428,7 +426,29 @@ with sekme2:
                         st.error(f"Kayıt sırasında hata oluştu: {e}")
 
     st.markdown("---")
-    st.subheader("📚 Kayıtlı Öğrenci Listesi")
+    
+    col_liste_baslik, col_liste_buton = st.columns([2.5, 1.5])
+    with col_liste_baslik:
+        st.subheader("📚 Kayıtlı Öğrenci Listesi")
+    with col_liste_buton:
+        # Sadece batu.jpg kalacak şekilde sıfırlama butonu
+        if st.button("🗑️ Veritabanını Sıfırla (Sadece batu.jpg kalsın)", type="secondary", use_container_width=True):
+            silinen_sayisi = 0
+            if os.path.exists(VERI_YOLU):
+                for f in os.listdir(VERI_YOLU):
+                    # batu.jpg veya batu.jpeg dışındaki dosyaları sil
+                    dosya_adi_kucuk = f.lower()
+                    if dosya_adi_kucuk not in ["batu.jpg", "batu.jpeg", "batu.png"]:
+                        try:
+                            os.remove(os.path.join(VERI_YOLU, f))
+                            silinen_sayisi += 1
+                        except Exception:
+                            pass
+            st.cache_resource.clear()
+            gc.collect()
+            st.success(f"Sıfırlandı! {silinen_sayisi} öğrencinin fotoğrafı silindi, sadece 'batu.jpg' korundu.")
+            st.rerun()
+
     mevcut_ogrenciler = [f for f in os.listdir(VERI_YOLU) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
 
     if mevcut_ogrenciler:
