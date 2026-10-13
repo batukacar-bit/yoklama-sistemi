@@ -119,6 +119,7 @@ img {
 }
 
 /* 7. Görsel Çerçeve Boyutlandırması (Kompakt ve Orantılı) */
+/* 7. Görsellerin Boyutu: PDF'in ve analizin net görünmesi için sınırı genişlet */
 [data-testid="stImage"] {
     display: flex !important;
     justify-content: center !important;
@@ -127,7 +128,7 @@ img {
 }
 
 [data-testid="stImage"] img {
-    max-height: 250px !important;
+    max-height: 850px !important;
     max-width: 100% !important;
     width: auto !important;
     height: auto !important;
