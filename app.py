@@ -38,6 +38,13 @@ button[title="Download"] {
     display: none !important;
     visibility: hidden !important;
 }
+/* 3. Sekmedeki (PDF) önizlemenin net ve büyük görünmesini sağla */
+div[data-testid="stTabContent"]:nth-of-type(3) [data-testid="stImage"] img {
+    max-height: 850px !important;
+    width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+}
 
 img {
     pointer-events: none !important;
@@ -753,8 +760,11 @@ with sekme3:
             ilk_sayfa_np = cv2.cvtColor(ilk_sayfa_np, cv2.COLOR_RGBA2RGB)
 
         H, W, _ = ilk_sayfa_np.shape
-        col_onizleme, col_ayarlar = st.columns([1.2, 1])
+        # Eski hali:
+        # col_onizleme, col_ayarlar = st.columns([1.2, 1])
 
+        # Yeni hali (Görsele 2 kat daha fazla alan verir):
+        col_onizleme, col_ayarlar = st.columns([2, 1])
         with col_ayarlar:
             st.markdown("### 📝 Öğrenci İsim Listesi")
             isimler_text = st.text_area("İsimleri yapıştırın:", height=140, placeholder="Mehmet Yılmaz\nKemal Demir...")
