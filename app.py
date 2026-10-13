@@ -4,6 +4,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
+
+import io
 import streamlit as st
 import re
 import gc
@@ -411,9 +413,16 @@ with sekme1:
                     if kamera:
                         gorsel = Image.open(kamera)
             else:
-                dosya = st.file_uploader("Sınıf Fotoğrafı Seç", type=['jpg', 'jpeg', 'png', 'heic', 'HEIC'], key="yoklama_foto")
-                if dosya:
-                    gorsel = Image.open(dosya)
+                dosya = st.file_uploader(
+                    "Sınıf Fotoğrafı Seç", 
+                    type=['jpg', 'jpeg', 'png', 'heic', 'HEIC', 'heif', 'HEIF', 'webp', 'WEBP'], 
+                    key="yoklama_foto"
+                )
+                if dosya is not None:
+                    try:
+                        gorsel = Image.open(io.BytesIO(dosya.getvalue()))
+                    except Exception as e:
+                        st.error(f"Fotoğraf açılamadı: {e}")
 
             if gorsel is not None:
                 gorsel = ImageOps.exif_transpose(gorsel)
@@ -604,10 +613,21 @@ with sekme2:
                 kayit_foto = Image.open(cam_foto)
                 st.info("✅ Fotoğraf başarıyla alındı (Gizlilik gereği ekranda gösterilmiyor).")
     else:
-        yuklenen = st.file_uploader("Vesikalık / Selfie Seç", type=['jpg', 'jpeg', 'png', 'heic', 'HEIC'], key=f"ogr_dosya_{reset_id}")
-        if yuklenen:
-            kayit_foto = Image.open(yuklenen)
-            st.info("✅ Fotoğraf yüklendi (Gizlilik gereği ekranda gösterilmiyor).")
+        # Tüm mobil fotoğraf formatlarını kabul edecek şekilde genişletildi
+        yuklenen = st.file_uploader(
+            "Vesikalık / Selfie Seç", 
+            type=['jpg', 'jpeg', 'png', 'heic', 'HEIC', 'heif', 'HEIF', 'webp', 'WEBP'], 
+            key=f"ogr_dosya_{reset_id}"
+        )
+        if yuklenen is not None:
+            try:
+                # Mobilde buffer çökmesini önlemek için BytesIO kullanılır
+                dosya_baytlari = io.BytesIO(yuklenen.getvalue())
+                kayit_foto = Image.open(dosya_baytlari)
+                kayit_foto = ImageOps.exif_transpose(kayit_foto)  # Yan/ters çekilen açıyı düzelt
+                st.info("✅ Fotoğraf başarıyla yüklendi (Gizlilik gereği gösterilmiyor).")
+            except Exception as e:
+                st.error(f"Fotoğraf okunurken hata oluştu: {e}")
 
     kaydet_butonu = st.button("💾 Yüz Vektörünü Sisteme Kaydet", type="primary", use_container_width=True)
 
